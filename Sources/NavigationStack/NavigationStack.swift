@@ -63,6 +63,18 @@ public class NavigationStack: ObservableObject {
                                        wrappedElement: AnyView(element)))
         }
     }
+    
+    /// Navigates to a view. Goes back automatically if the stack already contains an element with the id.
+    /// - Parameters:
+    ///   - element: The destination view.
+    ///   - identifier: The ID of the destination view (used to easily come back to it if needed).
+    public func pushOrPop<Element: View>(to element: Element, withId identifier: String? = nil) {
+        withAnimation(easing) {
+            navigationType = viewStack.contains(identifier) ? .pop : .push
+            viewStack.pushOrPop(to: ViewElement(id: identifier == nil ? UUID().uuidString : identifier!,
+                                       wrappedElement: AnyView(element)))
+        }
+    }
 
     /// Navigates back to a previous view.
     /// - Parameter to: The destination type of the transition operation.
@@ -87,6 +99,16 @@ private struct ViewStack {
     func peek() -> ViewElement? {
         views.last
     }
+    
+    func contains(_ elementId: String?) -> Bool {
+        guard let elementId = elementId else {
+            return false
+        }
+
+        return views.contains { containedElement in
+            containedElement.id == elementId
+        }
+    }
 
     var depth: Int {
         views.count
@@ -98,10 +120,25 @@ private struct ViewStack {
             return
         }
         views.append(element)
+        
+        printStack()
+    }
+    
+    mutating func pushOrPop(to element: ViewElement) {
+        guard indexForView(withId: element.id) == nil else {
+            print("Duplicated view identifier: \"\(element.id)\". Performing pop operation!")
+            popToView(withId: element.id)
+            return
+        }
+        views.append(element)
+        
+        printStack()
     }
 
     mutating func popToPrevious() {
         _ = views.popLast()
+        
+        printStack()
     }
 
     mutating func popToView(withId identifier: String) {
@@ -110,16 +147,24 @@ private struct ViewStack {
             return
         }
         views.removeLast(views.count - (viewIndex + 1))
+        
+        printStack()
     }
 
     mutating func popToRoot() {
         views.removeAll()
+        
+        printStack()
     }
 
     func indexForView(withId identifier: String) -> Int? {
         views.firstIndex {
             $0.id == identifier
         }
+    }
+    
+    private func printStack() {
+        print("!! ViewStack: \(views.map({ toPrint in toPrint.id }))")
     }
 }
 
